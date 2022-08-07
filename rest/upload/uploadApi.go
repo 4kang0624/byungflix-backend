@@ -2,12 +2,21 @@ package upload
 
 import (
 	"byungflix-backend/database"
-	"fmt"
+	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 )
+
+type uploadVideoResponse struct {
+	Status                string `json:"status"`
+	OriginalVideoTitle    string `json:"original_video_size"`
+	OriginalSubtitleTitle string `json:"original_subtitle_size"`
+	OriginalVideoSize     int    `json:"video_size"`
+	OriginalSubtitleSize  int    `json:"subtitle_size"`
+	VideoPath             string `json:"video_path"`
+	SubtitlePath          string `json:"subtitle_path"`
+}
 
 func MakeSeries(rw http.ResponseWriter, r *http.Request) {
 	series := database.Series{
@@ -21,57 +30,53 @@ func MakeSeries(rw http.ResponseWriter, r *http.Request) {
 
 func UploadVideo(rw http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 * 1024 * 1024 * 1024) // Upload video size limit 10GB
-	video, handlerVid, errFormFileVid := r.FormFile("video")
-	if errFormFileVid != nil {
-		fmt.Println(errFormFileVid)
-		return
+	rw.Header().Set("Content-Type", "application/json")
+	response := uploadVideoResponse{
+		Status:                "fail",
+		OriginalSubtitleTitle: "",
+		OriginalVideoTitle:    "",
+		OriginalSubtitleSize:  0,
+		OriginalVideoSize:     0,
+		VideoPath:             "",
+		SubtitlePath:          "",
 	}
-	defer video.Close()
-
-	subtitle, handlerSub, errFormFileSub := r.FormFile("subtitle")
-	if errFormFileSub != nil {
-		fmt.Println(errFormFileSub)
-		return
-	}
-	defer subtitle.Close()
 
 	path := "contents/" + r.FormValue("content_title") + "/" + r.FormValue("episode_count")
-	MkdirErr := os.Mkdir(path, 0755)
-	if MkdirErr != nil {
-		log.Fatal(MkdirErr)
+	err := os.Mkdir(path, 0755)
+	if err != nil {
+		responseJSON, _ := json.Marshal(response)
+		rw.Write(responseJSON)
+		return
 	}
 
-	fmt.Println("File Info")
-	fmt.Println("File Name: ", handlerVid.Filename)
-	fmt.Println("File Size: ", handlerVid.Size)
-	fmt.Println("File Type: ", handlerVid.Header)
-	fmt.Println("File Name: ", handlerSub.Filename)
-	fmt.Println("File Size: ", handlerSub.Size)
-	fmt.Println("File Type: ", handlerSub.Header)
+	video, handlerVid, _ := r.FormFile("video")
+	defer video.Close()
 
-	tempVideo, errTempVideo := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.mkv")
-	if errTempVideo != nil {
-		log.Fatal(errTempVideo)
-	}
+	subtitle, handlerSub, _ := r.FormFile("subtitle")
+	defer subtitle.Close()
+
+	tempVideo, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.mkv")
 	defer tempVideo.Close()
 
-	tempSub, errTempSub := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.ass")
-	if errTempSub != nil {
-		log.Fatal(errTempSub)
-	}
+	tempSub, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.ass")
 	defer tempSub.Close()
 
-	fileBytes, errFileBytes := ioutil.ReadAll(video)
-	if errFileBytes != nil {
-		log.Fatal(errFileBytes)
-	}
+	fileBytes, _ := ioutil.ReadAll(video)
 	tempVideo.Write(fileBytes)
-	fmt.Println(tempVideo.Name())
 
-	fileBytes, errFileBytes = ioutil.ReadAll(subtitle)
-	if errFileBytes != nil {
-		log.Fatal(errFileBytes)
-	}
+	fileBytes, _ = ioutil.ReadAll(subtitle)
 	tempSub.Write(fileBytes)
-	fmt.Println("Done")
+
+	response = uploadVideoResponse{
+		Status:                "success",
+		OriginalVideoTitle:    handlerVid.Filename,
+		OriginalSubtitleTitle: handlerSub.Filename,
+		OriginalVideoSize:     int(handlerVid.Size),
+		OriginalSubtitleSize:  int(handlerSub.Size),
+		VideoPath:             tempVideo.Name(),
+		SubtitlePath:          tempSub.Name(),
+	}
+
+	responseJSON, _ := json.Marshal(response)
+	rw.Write(responseJSON)
 }
