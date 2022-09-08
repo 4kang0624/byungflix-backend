@@ -11,16 +11,19 @@ type Series struct {
 }
 
 type Video struct {
-	Title         string `json:"title"`
-	ContentTitle  string `json:"content_title"`
-	EpisodeCount  int    `json:"episode_count"`
-	Description   string `json:"description"`
-	BroadcastDate string `json:"broadcast_date"`
-	UploadDate    string `json:"upload_time"`
-	VideoPath     string `json:"video_path"`
-	SubtitlePath  string `json:"subtitle_path"`
+	Title        string            `json:"title"`
+	ContentTitle string            `json:"content_title"`
+	EpisodeCount int               `json:"episode_count"`
+	ReleaseDate  string            `json:"release_date"`
+	UploadDate   string            `json:"upload_time"`
+	VideoPath    string            `json:"video_path"`
+	SubtitlePath map[string]string `json:"subtitle_path"`
 }
 
 func CreateSeries(series Series) {
 	fmt.Println(series)
+}
+
+func CreateVideo(video Video) {
+	fmt.Println(video)
 }

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type uploadVideoResponse struct {
@@ -19,13 +20,13 @@ type uploadVideoResponse struct {
 }
 
 func MakeSeries(rw http.ResponseWriter, r *http.Request) {
-	series := database.Series{
+	databaseInput := database.Series{
 		Title:       r.FormValue("title"),
 		TitleKor:    r.FormValue("title_kor"),
 		Description: r.FormValue("description"),
 	}
 	os.Mkdir("contents/"+r.FormValue("title"), 0755)
-	database.CreateSeries(series)
+	database.CreateSeries(databaseInput)
 }
 
 func UploadVideo(rw http.ResponseWriter, r *http.Request) {
@@ -79,4 +80,16 @@ func UploadVideo(rw http.ResponseWriter, r *http.Request) {
 
 	responseJSON, _ := json.Marshal(response)
 	rw.Write(responseJSON)
+
+	videoCnt, _ := strconv.Atoi(r.FormValue("episode_count"))
+	databaseInput := database.Video{
+		Title:        r.FormValue("content_title") + " - " + r.FormValue("episode_count"),
+		ContentTitle: r.FormValue("content_title"),
+		EpisodeCount: videoCnt,
+		ReleaseDate:  r.FormValue("release_date"),
+		UploadDate:   r.FormValue("upload_date"),
+		VideoPath:    tempVideo.Name(),
+		SubtitlePath: map[string]string{"ko": tempSub.Name()},
+	}
+	database.CreateVideo(databaseInput)
 }
