@@ -10,6 +10,7 @@ import (
 func Start() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/upload/video", upload.UploadVideo).Methods("POST")
+	router.HandleFunc("/api/upload/subtitle", upload.UploadSubtitle).Methods("POST")
 	router.HandleFunc("/api/create/series", upload.MakeSeries).Methods("POST")
 	err := http.ListenAndServe(":5000", router)
 	if err != nil {

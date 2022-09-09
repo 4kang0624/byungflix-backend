@@ -27,3 +27,7 @@ func CreateSeries(series Series) {
 func CreateVideo(video Video) {
 	fmt.Println(video)
 }
+
+func UpdateSubtitle(language string, path string, videoTitle string) {
+	fmt.Println(map[string]string{language: path}, videoTitle)
+}

@@ -10,12 +10,17 @@ import (
 )
 
 type uploadVideoResponse struct {
+	Status             string `json:"status"`
+	OriginalVideoTitle string `json:"original_video_size"`
+	OriginalVideoSize  int    `json:"video_size"`
+	VideoPath          string `json:"video_path"`
+}
+
+type uploadSubtitleResponse struct {
 	Status                string `json:"status"`
-	OriginalVideoTitle    string `json:"original_video_size"`
 	OriginalSubtitleTitle string `json:"original_subtitle_size"`
-	OriginalVideoSize     int    `json:"video_size"`
 	OriginalSubtitleSize  int    `json:"subtitle_size"`
-	VideoPath             string `json:"video_path"`
+	Language              string `json:"language"`
 	SubtitlePath          string `json:"subtitle_path"`
 }
 
@@ -33,13 +38,10 @@ func UploadVideo(rw http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 * 1024 * 1024 * 1024) // Upload video size limit 10GB
 	rw.Header().Set("Content-Type", "application/json")
 	response := uploadVideoResponse{
-		Status:                "fail",
-		OriginalSubtitleTitle: "",
-		OriginalVideoTitle:    "",
-		OriginalSubtitleSize:  0,
-		OriginalVideoSize:     0,
-		VideoPath:             "",
-		SubtitlePath:          "",
+		Status:             "fail",
+		OriginalVideoTitle: "",
+		OriginalVideoSize:  0,
+		VideoPath:          "",
 	}
 
 	path := "contents/" + r.FormValue("content_title") + "/" + r.FormValue("episode_count")
@@ -53,29 +55,17 @@ func UploadVideo(rw http.ResponseWriter, r *http.Request) {
 	video, handlerVid, _ := r.FormFile("video")
 	defer video.Close()
 
-	subtitle, handlerSub, _ := r.FormFile("subtitle")
-	defer subtitle.Close()
-
 	tempVideo, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.mkv")
 	defer tempVideo.Close()
-
-	tempSub, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.ass")
-	defer tempSub.Close()
 
 	fileBytes, _ := ioutil.ReadAll(video)
 	tempVideo.Write(fileBytes)
 
-	fileBytes, _ = ioutil.ReadAll(subtitle)
-	tempSub.Write(fileBytes)
-
 	response = uploadVideoResponse{
-		Status:                "success",
-		OriginalVideoTitle:    handlerVid.Filename,
-		OriginalSubtitleTitle: handlerSub.Filename,
-		OriginalVideoSize:     int(handlerVid.Size),
-		OriginalSubtitleSize:  int(handlerSub.Size),
-		VideoPath:             tempVideo.Name(),
-		SubtitlePath:          tempSub.Name(),
+		Status:             "success",
+		OriginalVideoTitle: handlerVid.Filename,
+		OriginalVideoSize:  int(handlerVid.Size),
+		VideoPath:          tempVideo.Name(),
 	}
 
 	responseJSON, _ := json.Marshal(response)
@@ -89,7 +79,43 @@ func UploadVideo(rw http.ResponseWriter, r *http.Request) {
 		ReleaseDate:  r.FormValue("release_date"),
 		UploadDate:   r.FormValue("upload_date"),
 		VideoPath:    tempVideo.Name(),
-		SubtitlePath: map[string]string{"ko": tempSub.Name()},
+		SubtitlePath: map[string]string{},
 	}
 	database.CreateVideo(databaseInput)
+}
+
+func UploadSubtitle(rw http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(500 * 1024 * 1024) // Upload subtitle size limit 500MB
+	rw.Header().Set("Content-Type", "application/json")
+	response := uploadSubtitleResponse{
+		Status:                "fail",
+		OriginalSubtitleTitle: "",
+		OriginalSubtitleSize:  0,
+		Language:              "",
+		SubtitlePath:          "",
+	}
+
+	path := "contents/" + r.FormValue("content_title") + "/" + r.FormValue("episode_count")
+
+	subtitle, handlerSub, _ := r.FormFile("subtitle")
+	defer subtitle.Close()
+
+	tempSub, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.ass")
+	defer tempSub.Close()
+
+	fileBytes, _ := ioutil.ReadAll(subtitle)
+	tempSub.Write(fileBytes)
+
+	response = uploadSubtitleResponse{
+		Status:                "success",
+		OriginalSubtitleTitle: handlerSub.Filename,
+		OriginalSubtitleSize:  int(handlerSub.Size),
+		Language:              r.FormValue("language"),
+		SubtitlePath:          tempSub.Name(),
+	}
+
+	responseJSON, _ := json.Marshal(response)
+	rw.Write(responseJSON)
+
+	database.UpdateSubtitle(r.FormValue("language"), tempSub.Name(), r.FormValue("content_title")+" - "+r.FormValue("episode_count"))
 }
