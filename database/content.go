@@ -17,6 +17,7 @@ type Video struct {
 	ReleaseDate  string            `json:"release_date"`
 	UploadDate   string            `json:"upload_time"`
 	VideoPath    string            `json:"video_path"`
+	VideoPathHls string            `json:"video_path_hls"`
 	SubtitlePath map[string]string `json:"subtitle_path"`
 }
 

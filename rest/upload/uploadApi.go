@@ -2,11 +2,13 @@ package upload
 
 import (
 	"byungflix-backend/database"
+	"byungflix-backend/util"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type uploadVideoResponse struct {
@@ -57,15 +59,18 @@ func UploadVideo(rw http.ResponseWriter, r *http.Request) {
 
 	tempVideo, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.mkv")
 	defer tempVideo.Close()
+	tempVidName := strings.Replace(tempVideo.Name(), "\\", "/", -1)
 
 	fileBytes, _ := ioutil.ReadAll(video)
 	tempVideo.Write(fileBytes)
+
+	videoPathHls := util.EncodeMkvToHls(tempVidName)
 
 	response = uploadVideoResponse{
 		Status:             "success",
 		OriginalVideoTitle: handlerVid.Filename,
 		OriginalVideoSize:  int(handlerVid.Size),
-		VideoPath:          tempVideo.Name(),
+		VideoPath:          tempVidName,
 	}
 
 	responseJSON, _ := json.Marshal(response)
@@ -78,7 +83,8 @@ func UploadVideo(rw http.ResponseWriter, r *http.Request) {
 		EpisodeCount: videoCnt,
 		ReleaseDate:  r.FormValue("release_date"),
 		UploadDate:   r.FormValue("upload_date"),
-		VideoPath:    tempVideo.Name(),
+		VideoPath:    tempVidName,
+		VideoPathHls: videoPathHls,
 		SubtitlePath: map[string]string{},
 	}
 	database.CreateVideo(databaseInput)
@@ -102,6 +108,7 @@ func UploadSubtitle(rw http.ResponseWriter, r *http.Request) {
 
 	tempSub, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.ass")
 	defer tempSub.Close()
+	tempSubName := strings.Replace(tempSub.Name(), "\\", "/", -1)
 
 	fileBytes, _ := ioutil.ReadAll(subtitle)
 	tempSub.Write(fileBytes)
@@ -111,11 +118,11 @@ func UploadSubtitle(rw http.ResponseWriter, r *http.Request) {
 		OriginalSubtitleTitle: handlerSub.Filename,
 		OriginalSubtitleSize:  int(handlerSub.Size),
 		Language:              r.FormValue("language"),
-		SubtitlePath:          tempSub.Name(),
+		SubtitlePath:          tempSubName,
 	}
 
 	responseJSON, _ := json.Marshal(response)
 	rw.Write(responseJSON)
 
-	database.UpdateSubtitle(r.FormValue("language"), tempSub.Name(), r.FormValue("content_title")+" - "+r.FormValue("episode_count"))
+	database.UpdateSubtitle(r.FormValue("language"), tempSubName, r.FormValue("content_title")+" - "+r.FormValue("episode_count"))
 }
