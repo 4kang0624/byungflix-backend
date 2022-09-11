@@ -106,7 +106,7 @@ func UploadSubtitle(rw http.ResponseWriter, r *http.Request) {
 	subtitle, handlerSub, _ := r.FormFile("subtitle")
 	defer subtitle.Close()
 
-	tempSub, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.ass")
+	tempSub, _ := ioutil.TempFile(path, r.FormValue("content_title")+"_"+r.FormValue("episode_count")+"_*.vtt")
 	defer tempSub.Close()
 	tempSubName := strings.Replace(tempSub.Name(), "\\", "/", -1)
 
