@@ -8,15 +8,17 @@ import (
 
 func EncodeMkvToHls(video string) string {
 	resultVideoTitle := strings.Split(video, ".")[0]
-	cmd := exec.Command("cmd", "/c", "ffmpeg",
+	cmd := exec.Command("ffmpeg",
 		"-i", video,
-		"-b:v", "1M",
-		"-g", "60",
+		"-profile:v", "baseline",
+		"-level", "3.0",
+		"-start_number", "0",
 		"-hls_time", "10",
 		"-hls_list_size", "0",
-		"-hls_segment_size", "500000",
+		"-f", "hls",
 		resultVideoTitle+".m3u8")
 	err := cmd.Run()
+
 	if err != nil {
 		fmt.Println(err)
 	}
