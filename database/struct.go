@@ -12,7 +12,7 @@ type Series struct {
 
 type Video struct {
 	Title        string            `json:"title"`
-	ContentTitle string            `json:"content_title"`
+	SeriesTitle  string            `json:"content_title"`
 	EpisodeCount int               `json:"episode_count"`
 	ReleaseDate  string            `json:"release_date"`
 	UploadDate   string            `json:"upload_time"`
