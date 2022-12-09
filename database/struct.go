@@ -1,9 +1,5 @@
 package database
 
-import (
-	"fmt"
-)
-
 type Series struct {
 	Title       string `json:"title"`
 	TitleKor    string `json:"title_kor"`
@@ -19,16 +15,4 @@ type Video struct {
 	VideoPath    string            `json:"video_path"`
 	VideoPathHls string            `json:"video_path_hls"`
 	SubtitlePath map[string]string `json:"subtitle_path"`
-}
-
-func CreateSeries(series Series) {
-	fmt.Println(series)
-}
-
-func CreateVideo(video Video) {
-	fmt.Println(video)
-}
-
-func UpdateSubtitle(language string, path string, videoTitle string) {
-	fmt.Println(map[string]string{language: path}, videoTitle)
 }
