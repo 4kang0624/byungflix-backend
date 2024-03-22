@@ -36,3 +36,32 @@ func GetSeriesList(title string) []database.Series {
 	}
 	return seriesList
 }
+
+func GetVideoListBySeriesTitle(title string) []database.Video {
+	client, err := connection.ConnectMongo()
+	if err != nil {
+		return nil
+	}
+	defer connection.DisconnectMongo(client, err)
+
+	collection := client.Database("byungflix").Collection("video")
+
+	filter := bson.D{{"seriestitle", title}}
+
+	cursor, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		return nil
+	}
+	defer cursor.Close(context.Background())
+
+	var videoList []database.Video
+	for cursor.Next(context.Background()) {
+		var video database.Video
+		err := cursor.Decode(&video)
+		if err != nil {
+			return nil
+		}
+		videoList = append(videoList, video)
+	}
+	return videoList
+}
