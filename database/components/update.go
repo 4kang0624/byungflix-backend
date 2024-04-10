@@ -4,8 +4,11 @@ import (
 	"byungflix-backend/database"
 	"byungflix-backend/database/connection"
 	"context"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func UpdadeSeries(oldTitle string, series database.Series) {
@@ -15,7 +18,8 @@ func UpdadeSeries(oldTitle string, series database.Series) {
 	}
 	defer connection.DisconnectMongo(client, err)
 
-	collection := client.Database("byungflix").Collection("series")
+	collectionSeries := client.Database("byungflix").Collection("series")
+	collectionVideo := client.Database("byungflix").Collection("video")
 
 	filterSeries := bson.M{"title": oldTitle}
 	updateSeries := bson.M{"$set": bson.M{
@@ -24,27 +28,83 @@ func UpdadeSeries(oldTitle string, series database.Series) {
 		"description": series.Description,
 	}}
 
-	/*
-		비디오 컬렉션에서의 시리즈 타이틀 변경, UpdateSeriesTitleInVideo 함수 구현해서 searchVideoBySeriesTitle로 찾아서 반복문 돌리기
-		filterVideo := bson.M{"seriestitle": oldTitle}
-		updateVideo := bson.M{"$set": bson.M{
-			"seriestitle": series.Title,
+	_, errSeries := collectionSeries.UpdateOne(context.TODO(), filterSeries, updateSeries)
+	if errSeries != nil {
+		return
+	}
+
+	newVideoDBList := UpdateTitleInFileSystem(oldTitle, series.Title)
+	for _, video := range newVideoDBList {
+		filterVideo := bson.M{
+			"title":        video.Title,
+			"episodecount": video.EpisodeCount,
 		}
-	*/
 
-	err = os.Rename("contents/"+oldTitle, "contents/"+series.Title)
-	if err != nil {
-		return
+		updateVideo := bson.M{"$set": bson.M{
+			"title":        video.Title,
+			"seriestitle":  series.Title,
+			"episodecount": video.EpisodeCount,
+			"releasedate":  video.ReleaseDate,
+			"uploaddate":   video.UploadDate,
+			"videopath":    video.VideoPath,
+			"videopathhls": video.VideoPathHls,
+			"subtitlepath": video.SubtitlePath,
+		}}
+
+		_, errVideo := collectionVideo.UpdateOne(context.TODO(), filterVideo, updateVideo)
+		if errVideo != nil {
+			return
+		}
 	}
 
-	_, err = collection.UpdateOne(context.TODO(), filterSeries, updateSeries)
-	if err != nil {
-		return
-	}
 	return
 }
 
-func UpdateSeriesTitleInVideo(oldSeriesTitle string, video database.Video) {
-	// title, seriseTitle, videoPath, videoPathHls 변경, subtitlePath 입력값이 있다면 subtitlePath도 변경해야 함
-	// mkv 및 m3u8 파일 제목 변경해야 함
+func UpdateTitleInFileSystem(oldTitle string, newTitle string) []database.Video {
+	TitleInDB := GetVideoListBySeriesTitle(oldTitle)
+	err := os.Rename("contents/"+oldTitle, "contents/"+newTitle)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	for i := range TitleInDB {
+		for key, value := range TitleInDB[i].SubtitlePath {
+			TitleInDB[i].SubtitlePath[key] = strings.Replace(value, "/"+oldTitle+"/", "/"+newTitle+"/", -1)
+		}
+		TitleInDB[i].VideoPath = strings.Replace(TitleInDB[i].VideoPath, "/"+oldTitle+"/", "/"+newTitle+"/", -1)
+		TitleInDB[i].VideoPathHls = strings.Replace(TitleInDB[i].VideoPathHls, "/"+oldTitle+"/", "/"+newTitle+"/", -1)
+	}
+
+	for i := range TitleInDB {
+		for key, value := range TitleInDB[i].SubtitlePath {
+			err := os.Rename(value, strings.Replace(value, "/"+oldTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), "/"+newTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), -1))
+			TitleInDB[i].SubtitlePath[key] = strings.Replace(value, "/"+oldTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), "/"+newTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), -1)
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+		}
+
+		err := os.Rename(TitleInDB[i].VideoPath, strings.Replace(TitleInDB[i].VideoPath, "/"+oldTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), "/"+newTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), -1))
+		TitleInDB[i].VideoPath = strings.Replace(TitleInDB[i].VideoPath, "/"+oldTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), "/"+newTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), -1)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+
+		err = os.Rename(TitleInDB[i].VideoPathHls, strings.Replace(TitleInDB[i].VideoPathHls, "/"+oldTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), "/"+newTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), -1))
+		TitleInDB[i].VideoPathHls = strings.Replace(TitleInDB[i].VideoPathHls, "/"+oldTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), "/"+newTitle+"_"+strconv.Itoa(TitleInDB[i].EpisodeCount), -1)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+	}
+
+	return TitleInDB
 }
