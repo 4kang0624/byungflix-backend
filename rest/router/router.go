@@ -15,6 +15,8 @@ func Start() {
 	router.HandleFunc("/api/create/series", upload.CreateSeries).Methods("POST")
 	router.HandleFunc("/api/search/series", content.SearchSeries).Methods("POST")
 	router.HandleFunc("/api/update/series", content.UpdateSeries).Methods("POST")
+	router.HandleFunc("/api/remove/series", content.RemoveSeries).Methods("POST")
+	router.HandleFunc("/api/remove/video", content.RemoveVideo).Methods("POST")
 	router.HandleFunc("/api/search/video_by_series", content.SearchVideoInSeries).Methods("POST")
 	router.HandleFunc("/contents/{content_title}/{episode_count}/{video_name}", content.StreamVideoAndSubtitle).Methods("GET")
 	router.HandleFunc("/download/{content_title}/{episode_count}/{video_name}", content.DownloadVideo).Methods("GET")
